@@ -1,27 +1,39 @@
 ﻿using System;
+using Modules.Common.Interfaces;
 using UnityEngine;
 
-namespace Assets.Modules.AnalyticsService.Example.Scripts
+namespace Modules.AnalyticsService.Example
 {
     /// <summary>
-    /// Вариант реализации класс для взаимодействия с циклом жизни MonoBehaviour
+    /// Вариант реализации класса для взаимодействия с циклом жизни MonoBehaviour
     /// </summary>
-    public class ExampleMonoBehaviourCycle : MonoBehaviour
+    public class ExampleMonoBehaviourCycle : MonoBehaviour, IMonoBehaviourCycle
     {
-        private static ExampleMonoBehaviourCycle _instance;
+        private Action OnUpdate;
+        private Action<bool> OnApplicationFocusChange;
 
-        public static Action OnUpdate;
-        public static Action<bool> OnApplicationFocusChange;
-
-        /// <summary>
-        /// Создать экземпляр
-        /// </summary>
-        public static void Create()
+        ///  <inheritdoc />
+        public void SubscribeToUpdate(Action action)
         {
-            var go = new GameObject();
-            go.name = typeof(ExampleMonoBehaviourCycle).ToString();
-            var component = go.AddComponent<ExampleMonoBehaviourCycle>();
-            component.ProvideSingleton();
+            OnUpdate += action;
+        }
+
+        ///  <inheritdoc />
+        public void UnsubscribeFromUpdate(Action action)
+        {
+            OnUpdate -= action;
+        }
+
+        ///  <inheritdoc />
+        public void SubscribeToApplicationFocus(Action<bool> action)
+        {
+            OnApplicationFocusChange += action;
+        }
+
+        ///  <inheritdoc />
+        public void UnsubscribeFromApplicationFocus(Action<bool> action)
+        {
+            OnApplicationFocusChange -= action;
         }
 
         /// <summary>
@@ -39,19 +51,6 @@ namespace Assets.Modules.AnalyticsService.Example.Scripts
         private void OnApplicationFocus(bool focus)
         {
             OnApplicationFocusChange?.Invoke(focus);
-        }
-
-        /// <summary>
-        /// Обеспечить один инстанс
-        /// </summary>
-        private void ProvideSingleton()
-        {
-            if (_instance && _instance != this) 
-            {
-                Destroy(gameObject);
-            }
-            _instance = this;
-            DontDestroyOnLoad(gameObject);
         }
     }
 }

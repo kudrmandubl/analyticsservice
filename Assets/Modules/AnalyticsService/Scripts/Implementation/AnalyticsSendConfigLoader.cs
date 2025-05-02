@@ -1,7 +1,5 @@
-﻿
-using Modules.AnalyticsService.Interfaces;
+﻿using Modules.AnalyticsService.Interfaces;
 using Modules.AnalyticsService.Models;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Modules.AnalyticsService.Implementation

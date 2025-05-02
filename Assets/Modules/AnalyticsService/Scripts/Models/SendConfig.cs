@@ -12,9 +12,10 @@ namespace Modules.AnalyticsService.Models
         [SerializeField] private string _url;
         [SerializeField] private string _contentType;
         [SerializeField] private float _resendTime;
+        [SerializeField] private bool _testUnsuccess;
 
         /// <summary>
-        /// Урл куда оптравляют аналитику
+        /// Урл куда отправляют аналитику
         /// </summary>
         public string Url => _url;
 
@@ -27,5 +28,10 @@ namespace Modules.AnalyticsService.Models
         /// Время через которое происходит попытка переотправки
         /// </summary>
         public float ResendTime => _resendTime;
+
+        /// <summary>
+        /// Тестировать ли неуспешную отправку
+        /// </summary>
+        public bool TestUnsuccess => _testUnsuccess;
     }
 }

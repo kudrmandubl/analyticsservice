@@ -36,6 +36,12 @@ namespace Modules.AnalyticsService.Implementation
                 var encoding = Encoding.UTF8;
 
                 var content = new StringContent(message.Content, encoding, _sendConfig.ContentType);
+
+                if (_sendConfig.TestUnsuccess)
+                {
+                    throw new HttpRequestException();
+                }
+
                 var response = await _httpClient.PostAsync(_sendConfig.Url, content);
 
                 if (response.StatusCode != System.Net.HttpStatusCode.OK)

@@ -1,32 +1,37 @@
-using Assets.Modules.AnalyticsService.Example.Scripts;
-using Modules.AnalyticsService.Example;
 using Modules.AnalyticsService.Interfaces;
 using Modules.AnalyticsService.Models;
+using Modules.Common.Interfaces;
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
+using Zenject;
 
 namespace Modules.AnalyticsService.Implementation
 {
     /// <summary>
-    /// Сервис для отправки аналитики.
-    /// Один из возможных вариантов реализации <see cref="IAnalyticsService" />
-    public class AnalyticsService : IAnalyticsService
+    /// РЎРµСЂРІРёСЃ РґР»СЏ РѕС‚РїСЂР°РІРєРё Р°РЅР°Р»РёС‚РёРєРё.
+    /// РћРґРёРЅ РёР· РІРѕР·РјРѕР¶РЅС‹С… РІР°СЂРёР°РЅС‚РѕРІ СЂРµР°Р»РёР·Р°С†РёРё <see cref="IAnalyticsService" />
+    public class AnalyticsService : IAnalyticsService, IDisposable
     {
         private IAnalyticsSaver _saver;
         private IAnalyticsSendConfigLoader _configLoader;
         private IAnalyticsSender _sender;
 
+        private IMonoBehaviourCycle _monoBehaviourCycle;
+
         private float _resendTime;
         private float _resendTimer;
-        private bool _isReseneding;
+        private bool _isResending;
+
 
         /// <summary>
-        /// Конструктор
+        /// РљРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ
         /// </summary>
-        public AnalyticsService()
+        [Inject]
+        public AnalyticsService(IMonoBehaviourCycle monoBehaviourCycle)
         {
+            _monoBehaviourCycle = monoBehaviourCycle;
+
             _saver = new AnalyticsSaver();
             _configLoader = new AnalyticsSendConfigLoader();
             var config = _configLoader.GetConfig();
@@ -34,9 +39,10 @@ namespace Modules.AnalyticsService.Implementation
 
             _resendTime = config.ResendTime;
 
-            // можно добавить метод уничтожения сервиса и отписки
-            ExampleMonoBehaviourCycle.OnApplicationFocusChange += SaveOnUnfocus;
-            ExampleMonoBehaviourCycle.OnUpdate += CountdownToResened;
+            monoBehaviourCycle.SubscribeToApplicationFocus(SaveOnUnfocus);
+            monoBehaviourCycle.SubscribeToUpdate(CountdownToResend);
+
+            SendMessageAsync("AnalyticsService successfully inited");
         }
 
         /// <inheritdoc />
@@ -48,8 +54,8 @@ namespace Modules.AnalyticsService.Implementation
                 Content = eventData,
             };
 
-            // если идёт переотправка - добавляем сообщение в конец очереди
-            if (_isReseneding)
+            // РµСЃР»Рё РёРґС‘С‚ РїРµСЂРµРѕС‚РїСЂР°РІРєР° - РґРѕР±Р°РІР»СЏРµРј СЃРѕРѕР±С‰РµРЅРёРµ РІ РєРѕРЅРµС† РѕС‡РµСЂРµРґРё
+            if (_isResending)
             {
                 _saver.AddUnsentMessage(message);
             }
@@ -60,10 +66,22 @@ namespace Modules.AnalyticsService.Implementation
         }
 
         /// <summary>
-        /// Отправить сообщение
+        /// Р’С‹СЃРІРѕР±РѕР¶РґРµРЅРёРµ
         /// </summary>
-        /// <param name="message">Сообщение</param>
-        /// <returns>Успешность</returns>
+        public void Dispose()
+        {
+            if (_monoBehaviourCycle != null)
+            {
+                _monoBehaviourCycle.UnsubscribeFromApplicationFocus(SaveOnUnfocus);
+                _monoBehaviourCycle.UnsubscribeFromUpdate(CountdownToResend);
+            }
+        }
+
+        /// <summary>
+        /// РћС‚РїСЂР°РІРёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ
+        /// </summary>
+        /// <param name="message">РЎРѕРѕР±С‰РµРЅРёРµ</param>
+        /// <returns>РЈСЃРїРµС€РЅРѕСЃС‚СЊ</returns>
         private async Task<bool> SendMessageAsync(Message message)
         {
             var success = await _sender.SendMessageAsync(message);
@@ -80,9 +98,9 @@ namespace Modules.AnalyticsService.Implementation
         }
 
         /// <summary>
-        /// Сохранение на анфокусе
+        /// РЎРѕС…СЂР°РЅРµРЅРёРµ РЅР° Р°РЅС„РѕРєСѓСЃРµ
         /// </summary>
-        /// <param name="focus">Фокус</param>
+        /// <param name="focus">Р¤РѕРєСѓСЃ</param>
         private void SaveOnUnfocus(bool focus)
         {
             if (focus)
@@ -93,11 +111,11 @@ namespace Modules.AnalyticsService.Implementation
         }
 
         /// <summary>
-        /// Отчёт для переотправки
+        /// РћС‚С‡С‘С‚ РґР»СЏ РїРµСЂРµРѕС‚РїСЂР°РІРєРё
         /// </summary>
-        private void CountdownToResened()
+        private void CountdownToResend()
         {
-            if (!_saver.GetFirstUnsentMessage().HasValue || _isReseneding)
+            if (!_saver.GetFirstUnsentMessage().HasValue || _isResending)
             {
                 return;
             }
@@ -110,11 +128,11 @@ namespace Modules.AnalyticsService.Implementation
         }
 
         /// <summary>
-        /// Переотправка неотправленных сообщений
+        /// РџРµСЂРµРѕС‚РїСЂР°РІРєР° РЅРµРѕС‚РїСЂР°РІР»РµРЅРЅС‹С… СЃРѕРѕР±С‰РµРЅРёР№
         /// </summary>
         private async Task ResendUnsentMessages()
         {
-            _isReseneding = true;
+            _isResending = true;
             var message = _saver.GetFirstUnsentMessage();
             while (message.HasValue)
             {
@@ -125,7 +143,7 @@ namespace Modules.AnalyticsService.Implementation
                 }
                 message = _saver.GetFirstUnsentMessage();
             }
-            _isReseneding = false;
+            _isResending = false;
         }
     }
 }

@@ -3,7 +3,7 @@
 namespace Modules.AnalyticsService.Interfaces
 {
     /// <summary>
-    /// 
+    /// Сущность для сохранения списка неотправленных сообщений
     /// </summary>
     public interface IAnalyticsSaver
     {
